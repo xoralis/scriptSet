@@ -2,10 +2,9 @@
 
 set -e
 
-
-echo "======================================"
-echo " Bash -> Zsh + Oh My Zsh Migration"
-echo "======================================"
+echo "========================================"
+echo " Bash -> Zsh + Oh My Zsh + Powerlevel10k "
+echo "========================================"
 
 
 DATE=$(date +%Y%m%d_%H%M%S)
@@ -16,7 +15,7 @@ DATE=$(date +%Y%m%d_%H%M%S)
 # 1. Backup
 ########################################
 
-echo "[1/12] Backup bash files"
+echo "[1/14] Backup bash config"
 
 
 for f in \
@@ -25,54 +24,49 @@ for f in \
 ~/.profile \
 ~/.bash_history
 do
-
     if [ -f "$f" ]; then
-
         cp "$f" "${f}.backup.${DATE}"
-        echo "backup $f"
-
     fi
-
 done
 
 
 
 ########################################
-# 2. Install zsh
+# 2. Install packages
 ########################################
 
-echo "[2/12] Install packages"
+echo "[2/14] Install packages"
 
 
 if command -v apt >/dev/null 2>&1; then
 
     sudo apt update
-    sudo apt install -y zsh git curl
+    sudo apt install -y zsh git curl wget fzf
 
 
 elif command -v dnf >/dev/null 2>&1; then
 
-    sudo dnf install -y zsh git curl
+    sudo dnf install -y zsh git curl wget fzf
 
 
 elif command -v pacman >/dev/null 2>&1; then
 
-    sudo pacman -S --noconfirm zsh git curl
+    sudo pacman -S --noconfirm zsh git curl wget fzf
 
 
 elif command -v brew >/dev/null 2>&1; then
 
-    brew install zsh git curl
+    brew install zsh git curl wget fzf
 
 fi
 
 
 
 ########################################
-# 3. Install Oh My Zsh
+# 3. Oh My Zsh
 ########################################
 
-echo "[3/12] Install Oh My Zsh"
+echo "[3/14] Install Oh My Zsh"
 
 
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
@@ -86,10 +80,30 @@ fi
 
 
 ########################################
-# 4. History migration
+# 4. Powerlevel10k
 ########################################
 
-echo "[4/12] Migrate bash history"
+echo "[4/14] Install Powerlevel10k"
+
+
+P10K_DIR="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+
+
+if [ ! -d "$P10K_DIR" ]; then
+
+git clone --depth=1 \
+https://github.com/romkatv/powerlevel10k.git \
+"$P10K_DIR"
+
+fi
+
+
+
+########################################
+# 5. History migration
+########################################
+
+echo "[5/14] Migrate history"
 
 
 if [ -f ~/.bash_history ]; then
@@ -111,37 +125,25 @@ if [ -f ~/.bash_history ]; then
 
     chmod 600 ~/.zsh_history
 
-
-    echo "history migrated"
-
-else
-
-    echo "No bash history found"
-
 fi
 
 
 
 ########################################
-# 5. zprofile
+# 6. zprofile
 ########################################
 
-echo "[5/12] Create zprofile"
+echo "[6/14] Create zprofile"
 
 
 cat > ~/.zprofile <<'EOF'
 
-
-# =========================
-# Migrated environment
-# =========================
-
+# migrated environment
 
 typeset -U PATH
 
 
 EOF
-
 
 
 for f in ~/.bash_profile ~/.profile
@@ -158,24 +160,22 @@ done
 
 
 ########################################
-# 6. zshrc
+# 7. zshrc
 ########################################
 
-echo "[6/12] Create zshrc"
+echo "[7/14] Create zshrc"
 
 
 cat > ~/.zshrc <<'EOF'
 
 
-# =========================
-# Oh My Zsh
-# =========================
-
-
 export ZSH="$HOME/.oh-my-zsh"
 
 
-ZSH_THEME="agnoster"
+# Powerlevel10k
+
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
 
 
 plugins=(
@@ -191,14 +191,12 @@ plugins=(
 )
 
 
+
 source $ZSH/oh-my-zsh.sh
 
 
 
-# =========================
-# History
-# =========================
-
+# history
 
 HISTFILE=~/.zsh_history
 
@@ -220,56 +218,53 @@ EOF
 
 
 ########################################
-# 7. Alias
+# 8. Alias
 ########################################
 
-echo "[7/12] Migrate aliases"
+echo "[8/14] Migrate aliases"
 
 
 for f in ~/.bashrc ~/.bash_profile
 do
 
-if [ -f "$f" ]; then
+    if [ -f "$f" ]; then
 
-grep '^alias ' "$f" >> ~/.zshrc || true
+        grep '^alias ' "$f" >> ~/.zshrc || true
 
-fi
+    fi
 
 done
 
 
 
 ########################################
-# 8. Functions
+# 9. Functions
 ########################################
 
-echo "[8/12] Migrate functions"
+echo "[9/14] Migrate functions"
 
 
 if [ -f ~/.bashrc ]; then
 
-
-grep -A20 \
+grep -A30 \
 -E '^[a-zA-Z_][a-zA-Z0-9_]*\(\)' \
 ~/.bashrc >> ~/.zshrc || true
-
 
 fi
 
 
 
 ########################################
-# 9. Dev environments
+# 10. Environment tools
 ########################################
 
-echo "[9/12] Setup environments"
+echo "[10/14] Setup environments"
 
 
 
 # nvm
 
 if [ -d "$HOME/.nvm" ]; then
-
 
 cat >> ~/.zshrc <<'EOF'
 
@@ -278,14 +273,8 @@ cat >> ~/.zshrc <<'EOF'
 
 export NVM_DIR="$HOME/.nvm"
 
-
 [ -s "$NVM_DIR/nvm.sh" ] \
 && source "$NVM_DIR/nvm.sh"
-
-
-[ -s "$NVM_DIR/bash_completion" ] \
-&& source "$NVM_DIR/bash_completion"
-
 
 EOF
 
@@ -297,7 +286,6 @@ fi
 
 if [ -d "$HOME/.pyenv" ]; then
 
-
 cat >> ~/.zshrc <<'EOF'
 
 
@@ -308,7 +296,6 @@ export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 
 eval "$(pyenv init - zsh)"
-
 
 EOF
 
@@ -330,17 +317,12 @@ fi
 
 if [ -d "$HOME/.rbenv" ]; then
 
-
 cat >> ~/.zshrc <<'EOF'
 
 
-# rbenv
-
 eval "$(rbenv init - zsh)"
 
-
 EOF
-
 
 fi
 
@@ -350,17 +332,12 @@ fi
 
 if command -v starship >/dev/null 2>&1; then
 
-
 cat >> ~/.zshrc <<'EOF'
 
 
-# starship
-
 eval "$(starship init zsh)"
 
-
 EOF
-
 
 fi
 
@@ -370,17 +347,12 @@ fi
 
 if [ -f "$HOME/.cargo/env" ]; then
 
-
 cat >> ~/.zshrc <<'EOF'
 
 
-# cargo
-
 source "$HOME/.cargo/env"
 
-
 EOF
-
 
 fi
 
@@ -390,77 +362,79 @@ fi
 
 if [ -d "$HOME/.sdkman" ]; then
 
-
 cat >> ~/.zshrc <<'EOF'
 
-
-# sdkman
 
 export SDKMAN_DIR="$HOME/.sdkman"
 
 source "$SDKMAN_DIR/bin/sdkman-init.sh"
 
+EOF
+
+fi
+
+
+
+########################################
+# 11. Install plugins
+########################################
+
+echo "[11/14] Install plugins"
+
+
+CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins
+
+
+
+git clone \
+https://github.com/zsh-users/zsh-autosuggestions \
+"$CUSTOM/zsh-autosuggestions" \
+2>/dev/null || true
+
+
+
+git clone \
+https://github.com/zsh-users/zsh-syntax-highlighting.git \
+"$CUSTOM/zsh-syntax-highlighting" \
+2>/dev/null || true
+
+
+
+git clone \
+https://github.com/agkozak/zsh-z \
+"$CUSTOM/zsh-z" \
+2>/dev/null || true
+
+
+
+########################################
+# 12. p10k config
+########################################
+
+echo "[12/14] Setup p10k"
+
+
+if [ ! -f ~/.p10k.zsh ]; then
+
+touch ~/.p10k.zsh
+
+fi
+
+
+cat >> ~/.zshrc <<'EOF'
+
+
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
 EOF
 
 
-fi
-
-
-
 
 ########################################
-# 10. Install plugins
+# 13. Default shell
 ########################################
 
-echo "[10/12] Install plugins"
-
-
-CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}
-
-
-
-# autosuggestions
-
-if [ ! -d "$CUSTOM/plugins/zsh-autosuggestions" ]; then
-
-git clone \
-https://github.com/zsh-users/zsh-autosuggestions \
-"$CUSTOM/plugins/zsh-autosuggestions"
-
-fi
-
-
-
-# syntax highlighting
-
-if [ ! -d "$CUSTOM/plugins/zsh-syntax-highlighting" ]; then
-
-git clone \
-https://github.com/zsh-users/zsh-syntax-highlighting.git \
-"$CUSTOM/plugins/zsh-syntax-highlighting"
-
-fi
-
-
-
-# z
-
-if [ ! -d "$CUSTOM/plugins/zsh-z" ]; then
-
-git clone \
-https://github.com/agkozak/zsh-z \
-"$CUSTOM/plugins/zsh-z"
-
-fi
-
-
-
-########################################
-# 11. Default shell
-########################################
-
-echo "[11/12] Set default shell"
+echo "[13/14] Change shell"
 
 
 ZSH=$(which zsh)
@@ -468,29 +442,35 @@ ZSH=$(which zsh)
 
 if [ -n "$ZSH" ]; then
 
-    chsh -s "$ZSH" || true
+chsh -s "$ZSH" || true
 
 fi
 
 
 
 ########################################
-# 12. Finish
+# 14. Finish
 ########################################
 
 echo
-echo "======================================"
-echo " Migration completed"
-echo "======================================"
+echo "========================================"
+echo " Done!"
+echo "========================================"
+
 echo
-echo "Run:"
+echo "Next:"
 echo
-echo "  exec zsh"
+echo "1. Install Nerd Font:"
+echo "   MesloLGS NF"
+echo
+echo "2. Restart:"
+echo "   exec zsh"
+echo
+echo "3. Configure:"
+echo "   p10k configure"
 echo
 echo "Test:"
-echo
-echo "  echo \$SHELL"
-echo "  history | tail"
-echo "  nvm --version"
-echo "  python --version"
+echo "   history"
+echo "   nvm -v"
+echo "   node -v"
 echo
